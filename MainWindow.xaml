@@ -22,14 +22,14 @@
         </StackPanel>
         <ListBox Grid.Column="0"
                  Grid.Row="1"
-                 ItemsSource="{Binding Palindromes, UpdateSourceTrigger=PropertyChanged}"
+                 ItemsSource="{Binding PalindromeCandidates, UpdateSourceTrigger=PropertyChanged}"
                  FontSize="22"
                  d:ItemsSource="{d:SampleData ItemCount=5}" >
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Text}"  Margin="4" MinWidth="400"/>
-                        <TextBlock Text="{Binding Path=Status, UpdateSourceTrigger=PropertyChanged  }"  Margin="4" MinWidth="150"/>
+                        <TextBlock Text="{Binding Path=Status, UpdateSourceTrigger=PropertyChanged}"  Margin="4" MinWidth="150"/>
 
                     </StackPanel>
                 </DataTemplate>
@@ -37,7 +37,7 @@
         </ListBox>
 
         <Button Grid.Row="1" Grid.Column="1" Width="115" Height="40" Content="Открыть папку" FontSize="16" Command="{Binding OpenFolderCommand}"/>
-        <Button Grid.Row="1" Grid.Column="1" Width="115" Height="40" Content="Открыть папку" FontSize="16" Command="{Binding OpenFolderCommand}"/>
+        <Button Grid.Row="1" Margin="0,200,0,0" Grid.Column="1" Width="115" Height="40" Content="Проверить" FontSize="16" Command="{Binding CheckPalindromeCommand}"/>
 
     </Grid>
 </Window>

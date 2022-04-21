@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ClientApp;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -7,94 +8,68 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.WindowsAPICodePack.Dialogs;
-
+using System.Windows.Input;
 
 namespace ClientApp
 {
     internal class VM: INotifyPropertyChanged
     {
-        const int port = 7000;
-
-        const string ipAddress = "127.0.0.1";
-
         //коллекция для представления данных в listBox
-        private ObservableCollection<Palindrome> palindromes;
-        public ObservableCollection<Palindrome> Palindromes { get { return palindromes; } set { palindromes = value; OnPropertyChanged("Palindromes"); } }
+        private ObservableCollection<PalindromeСandidate> palindromesCandidates;
+        public ObservableCollection<PalindromeСandidate> PalindromeCandidates 
+        { 
+            get { return palindromesCandidates; } 
+            set 
+            { 
+                palindromesCandidates = value; 
+                OnPropertyChanged("PalindromeCandidates"); 
+            } 
+        }
 
-        //коллекция для хранения запросов, которые необходимо обработать
-        private ObservableCollection<Palindrome> queuePalindromes;
-        public ObservableCollection<Palindrome> QueuePalindromes { get { return queuePalindromes; } set { queuePalindromes = value; OnPropertyChanged("QueuePalindromes"); } }
 
-        //путь до папки с вхлдными данными
+        //путь до папки с входными данными
         private string folderPath = String.Empty;
-        public string FolderPath { get { return folderPath; } set { folderPath = value; OnPropertyChanged("FolderPath"); } }
+        public string FolderPath 
+        { 
+            get { return folderPath; } 
+            set 
+            { 
+                folderPath = value; 
+                OnPropertyChanged("FolderPath"); 
+            } 
+        }
 
 
         public VM()
         {
-            Palindromes = new ObservableCollection<Palindrome>();
-            QueuePalindromes = new ObservableCollection<Palindrome>();
+            PalindromeCandidates = new ObservableCollection<PalindromeСandidate>();
 
         }
 
-        //метод для отправки запроса
-        void CheckPalindrome(object? obj)
+
+        private MyCommand checkPalindromeCommand;
+        public MyCommand CheckPalindromeCommand
         {
-            bool Checked = false;
-            Palindrome UserPalindrome = (Palindrome)obj;
-            int index = Palindromes.IndexOf(UserPalindrome); 
-            //запрос отправляется, пока не будет обработан
-            while (!Checked)
+            get
             {
-                TcpClient client = null;
-                try
-                {
-                    
-                    Palindromes[index].Status = "Ожидание...";
-                    client = new TcpClient(ipAddress, port);
-                    NetworkStream stream = client.GetStream();
-
-                    //отправка запроса
-                    byte[] request = Encoding.Unicode.GetBytes(UserPalindrome.Text);
-                    stream.Write(request, 0, request.Length);
-
-                    //получения результата
-                    byte[] responce = new byte[2];
-                    stream.Read(responce, 0, responce.Length);
-                    string resp = Encoding.Unicode.GetString(responce);
-
-                    
-                    // 0 - не палиндром, 1 - палиндром, 2 - сервер занят
-                    //каждому запросу устанавливается соотвествующий статус 
-                    if (resp == "0") 
-                    { 
-                        Checked = true;
-                        Palindromes[index].Status = "No";
-                        stream.Close();
-                        client.Close();
-                    }
-                    else if(resp == "1")
+                return checkPalindromeCommand ??
+                    (checkPalindromeCommand = new MyCommand(async obj =>
                     {
-                        Checked = true;
-                        Palindromes[index].Status = "Yes";
-                        stream.Close();
-                        client.Close();
-                    }
-                    else if (resp == "2")
-                    {
-                        Palindromes[index].Status = "В очереди";
-                        Thread.Sleep(1000);
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                }
+                        foreach (var pc in PalindromeCandidates)
+                        {
+                            PalindromeChecker checker = new PalindromeChecker();
+                            Task t = Task.Run(async () =>
+                            {
+                                await checker.CheckPalindromeCandidate(pc);
+                            });
+                        }
+                    },
+                    (obj) => PalindromeCandidates.Count != 0));
             }
         }
-
 
         //Реализация команды для открытия папки с входными данными
         private MyCommand openFolderCommand;
@@ -115,7 +90,7 @@ namespace ClientApp
                             string[] files = Directory.GetFiles(FolderPath);
 
                             //на основе всех файлов создаются палиндромы-запросы, предполагается, что все файлы корректные (соотвествуют входным данным)
-                            foreach(string file in files)
+                            foreach (string file in files)
                             {
                                 using (FileStream fstream = new FileStream(file, FileMode.Open))
                                 {
@@ -123,19 +98,10 @@ namespace ClientApp
                                     await fstream.ReadAsync(buffer, 0, buffer.Length);
                                     string text = Encoding.Default.GetString(buffer);
 
-                                    var pal = new Palindrome(text, "Ожидание");
-                                    Palindromes.Add(pal);
-                                    QueuePalindromes.Add(pal);
+                                    var pal = new PalindromeСandidate(text, Status.Processing.ToString());
+                                    PalindromeCandidates.Add(pal);
                                 }
                             }
-                            //каждый необработанный запрос в очереди обрабатывается
-                            foreach(var pal in QueuePalindromes)
-                            {
-                                Thread th = new Thread(CheckPalindrome);
-                                th.Start(pal);
-                            }
-                            QueuePalindromes = new ObservableCollection<Palindrome>();
-                            FolderPath = String.Empty;
                         }
                     },
                     (obj) => FolderPath == String.Empty));
@@ -148,5 +114,6 @@ namespace ClientApp
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
         }
+
     }
 }
